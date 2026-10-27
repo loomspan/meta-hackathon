@@ -32,7 +32,7 @@ The assistant proposed that the framework load and preserve the configuration as
 
 ### DataSkill Java implementation
 
-Interpret the data definition and perform the requested named operations. Schema interpretation, query-definition handling, and implementation-specific checks belong with this capability rather than the framework core.
+Interpret the data definition and perform the requested named operations. Schema interpretation, query-definition handling, and implementation-specific checks belong with this capability rather than the framework core. The subsequent [ownership and enforcement decision](010-data-ownership-and-access-enforcement.md) also assigns enforcement of the selected data strategy to DataSkill, using trusted context established by Cloud. Every application table definition must include `ownerId`.
 
 The exact supported operations, schema features, validation timing, and database integration remain open, as recorded in document 003.
 
@@ -40,7 +40,7 @@ The exact supported operations, schema features, validation timing, and database
 
 Own the Cloud-specific identity, app membership, and sharing-strategy behavior. Cloud hosts the framework and registers the JavaSkills it needs, following the general hosting relationship the owner described for loomspan-sidecar.
 
-The owner proposed that strategy implementations could themselves be JavaSkills living in Cloud. How those skills cooperate with the DataSkill implementation is still to be designed. Optional configuration alone does not define access enforcement.
+Cloud establishes authenticated account, authorized app/environment, and membership for each application request; DataSkill enforces the selected strategy. The earlier proposal for strategy implementations as separate JavaSkills remains an implementation option. How any such skills cooperate with DataSkill is still to be designed. Optional configuration alone does not define access enforcement. Relationship ownership and cross-user references are tracked as **DATA-OWNERSHIP-001** in document 010.
 
 ### Build skill pack and AI companion
 

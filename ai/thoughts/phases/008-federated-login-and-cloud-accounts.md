@@ -52,7 +52,7 @@ The discussed companion flow is:
 5. The user authorizes the companion, and its connection completes the token exchange.
 6. The companion can access Cloud capabilities subject to the user's permissions.
 
-This captures the intended user experience, not exact callback ordering or middleware behavior. Build/Run authorization scope, client registration, token refresh, connection revocation, and compatibility with individual companions remain to be designed and verified.
+This captures the intended user experience, not exact callback ordering or middleware behavior. The later [Companion Connection and App Discovery](011-companion-connection-and-app-discovery.md) decision establishes one connection per companion for both Build and Run, with Cloud enforcing permissions per action. Exact protocol scopes, client registration, token refresh, connection revocation, and compatibility with individual companions remain to be designed and verified.
 
 Supabase documents OAuth-server capabilities for MCP authorization and requires an application-provided authorization UI. At the time of the discussion, its OAuth server was documented as beta. Those findings support investigating this path; they do not establish a completed integration or guaranteed compatibility with every companion.
 

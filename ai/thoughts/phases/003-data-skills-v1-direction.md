@@ -151,11 +151,13 @@ The subsequent direction favored suitable database queries to avoid making broad
 
 The project owner supported separating strategy authoring from execution and liked the possibility that the same named operation, such as `findQuickRecipes(maxMinutes)`, could operate within different data-access boundaries according to the app's strategy.
 
-The current direction keeps the Cloud-specific strategy meanings outside the framework. The Build skill pack can help configure an app, while Cloud owns its identity, membership, and sharing behavior. The DataSkill Java implementation interprets data definitions. How Cloud's strategy behavior connects to that implementation remains unresolved.
+The current direction keeps the Cloud-specific strategy meanings outside the framework. Cloud establishes authenticated account, authorized app/environment, and membership for each application request. The DataSkill Java implementation interprets data definitions and enforces the selected strategy on every data operation. This responsibility split is agreed in [Data Ownership and Access Enforcement](010-data-ownership-and-access-enforcement.md); the integration contract and concrete enforcement mechanisms remain open.
 
-Cloud-owned strategy JavaSkills were proposed by the project owner. No wrapper, delegation, policy-provider, or database-enforcement mechanism has been selected. Earlier suggestions to add a generic policy contract directly to a native framework Data Skill are not the current direction.
+Cloud-owned strategy JavaSkills were proposed by the project owner. The later decision places strategy enforcement with DataSkill; whether separate strategy JavaSkills assist it, and the wrapper, delegation, or database-enforcement mechanisms, remain open. Earlier suggestions to add a generic policy contract directly to a native framework Data Skill are not the current direction.
 
-For illustration, Share Nothing could restrict a recipe query to the caller's records, while shared-read strategies could query records available to app participants. Ownership columns, injected query predicates, and other enforcement mechanics remain proposals, not agreed storage or execution designs.
+Every application table definition must include `ownerId`, referring to the Cloud internal account ID, under all three strategies. Ownership comes from trusted context rather than a companion-supplied owner claim. Share Nothing restricts access to the user's own data; Owner Edit allows participants to read others' records while changing only their own; Share Everything permits shared editing. Owned child records follow their contribution's ownership and access rules. Exact field representation, query enforcement, and relationship mechanics remain open.
+
+The DataSkill must keep user-owned structures together under Share Nothing and Owner Edit. A generic reference system will support references to other users' records while preserving separate ownership and granting no additional access. Losing a target must leave the referencing user's owned data intact and usable; optional references may disappear or become inactive while remaining references continue to work. **DATA-OWNERSHIP-001** in document 010 tracks the relationship/reference implementation, including deletion, departure, and sandbox behavior.
 
 ### Schema representation and constraints
 

@@ -164,31 +164,26 @@ Removing an active member is distinct from revoking a pending invitation.
 | Strategy | Behavior on voluntary departure or removal |
 |---|---|
 | Share Nothing | Archive the user's data for their download and remove it from active app use. The archive is private to the departing user, not accessible to the app owner or other participants. |
-| Owner Edit / Everyone Read | Archive a copy of the user's contributions for their download. Contributions retained in the app remain read-only to other participants; the departing user has a 30-day choice to remove their active contributions. |
+| Owner Edit / Everyone Read | Same as Share Nothing: privately archive the user's data for download and remove it from active app use. Their contributions do not remain available to other participants. |
 | Share Everything | Shared content remains available for remaining participants to manage under the existing strategy. The new personal-archive policy does not apply. |
 
 For Share Nothing and Owner Edit, the personal archive is available to the departing user for **30 days after departure or removal**, then is deleted. The deadline ends both download access and archive retention, not merely visibility in the dashboard.
 
-The archive is a copy for the user's retrieval, separate from any records retained in the app. Download and permitted cleanup are Cloud account-management capabilities that do not require active membership. Removing contributions from the app during the window does not delete the archive early.
+The archive is a private copy for the user's retrieval after their data leaves active app use. Archive download is a Cloud account-management capability that does not require active membership. The 30-day window governs archive access and retention, not a choice to retain active contributions.
 
 The intended archive represents the user's data at departure. The assistant recommended securing that snapshot before active-data cleanup. Coordination with already accepted work, archive creation failures, and the exact snapshot cutoff remain implementation questions; no race-free mechanism has yet been designed.
 
-### Owner Edit cleanup window
+### Unified departure behavior for owner-based strategies
 
-Voluntary departures and removed participants receive the same 30-day cleanup window:
+Share Nothing and Owner Edit use the same departure policy whether the participant leaves voluntarily or is removed: their owned data leaves active app use and is privately archived for 30 days. The earlier Owner Edit option to retain contributions and choose removal during a cleanup window is superseded by [Data Ownership and Access Enforcement](010-data-ownership-and-access-enforcement.md).
 
-- A voluntarily departing user may choose to remove or retain their contributions when leaving. If retained, they may choose removal during the remainder of the window.
-- A removed participant's contributions initially remain read-only in the app. That participant can choose to remove them during the window.
-- After 30 days, the special post-departure removal right ends. Contributions left in the app remain read-only to remaining participants, and the personal archive is deleted.
-- The archive is provided in either case, whether active contributions are removed or retained.
-
-This is a narrow right over the departing user's own contributions, not permission to resume ordinary app operations or access other participants' data.
+Owned child records follow their parent contribution. Cross-user references must not retain departing data as active content. Losing a target must leave the referencing user's owned data intact and usable; optional references may disappear or become inactive, and remaining references must continue to work. The implementation is open in **DATA-OWNERSHIP-001** in document 010.
 
 ### Rejoining
 
-Rejoin behavior follows document 009: Share Nothing users start without active personal data and do not automatically restore archives; Owner Edit users regain control of retained records associated with their internal account ID; Share Everything users regain access to current shared content. Removed records stay removed.
+Rejoin behavior follows documents 009 and 010: Share Nothing and Owner Edit users start without their former active personal data and do not automatically restore archives; Share Everything users regain access to current shared content. Removed records stay removed.
 
-The interaction between rejoining and a still-running archive/cleanup window needs implementation clarification. No automatic deadline extension or archive restoration is established here.
+The interaction between rejoining and a still-running archive-retention window needs implementation clarification. No automatic deadline extension or archive restoration is established here.
 
 ### Ownership transfer
 
@@ -228,7 +223,7 @@ Pending invitations are invalidated so they cannot silently reactivate the app. 
 
 - Archive format, storage, authorization, deletion scheduling, and recovery from failed archival or cleanup jobs.
 - Snapshot consistency with accepted work and concurrent changes to shared data.
-- Selecting a user's contributions and handling dependent records when those contributions are removed.
+- Selecting a user's owned contribution structures and handling cross-user references when those contributions are removed; see **DATA-OWNERSHIP-001** in document 010.
 - Deadline representation and enforcement at the 30-day boundary.
 - Cleanup and archive behavior when a user rejoins before expiry.
 - Ownership-transfer offer lifetime, duplicate/concurrent acceptances, and failure recovery during sandbox clearing.

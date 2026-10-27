@@ -72,7 +72,7 @@ The intended end state is an authorized, registered user whose companion has the
 
 Membership persists in Cloud beyond the invitation conversation. A fresh context or another authorized companion needs a way to discover the user's registered apps and retrieve the applicable Run/app packs and versions.
 
-The invitation prompt is an entry mechanism, not the only durable record of which app the user joined. App discovery and pack retrieval APIs remain to be designed.
+The invitation prompt is an entry mechanism, not the only durable record of which app the user joined. [Companion Connection and App Discovery](011-companion-connection-and-app-discovery.md) establishes one connection for Build and Run, lightweight app summaries, instructions loaded for a selected app, and production use by default. How the companion first recognizes Loomspan in a new conversation, along with exact discovery and retrieval APIs, remains open.
 
 Companion-first is the primary onboarding direction. Whether Cloud also supports web acceptance in V1 remains open; web acceptance would not inherently prevent later companion discovery if that capability is provided.
 
@@ -116,7 +116,7 @@ For an account that accepted and subsequently left, retrying that old acceptance
 
 Revocation applies to pending invitations. Once accepted, an invitation has completed its purpose; revoking an invitation is not a way to remove an active member.
 
-Whether and how owners can remove active members remains open for the next discussion. No member-removal permission or data-retention behavior for forced removal is established here.
+Owner removal of active members is now defined in [App Lifecycle](006-app-lifecycle.md). The owner may remove another participant; data handling follows the strategy-specific departure rules, including the unified Share Nothing/Owner Edit policy in [Data Ownership and Access Enforcement](010-data-ownership-and-access-enforcement.md).
 
 ### Rejoining and retained data
 
@@ -125,23 +125,22 @@ Rejoining does not undo the data decision made when leaving:
 | Data strategy | V1 rejoin behavior |
 |---|---|
 | Share Nothing | Previously archived data stays archived. The returning user starts with no active personal data; automatic restoration is not part of this flow. |
-| Owner Edit / Everyone Read | Retained records remain associated with the user's internal account ID, and the returning user can manage them again. Removed records stay removed. |
+| Owner Edit / Everyone Read | Same as Share Nothing: the returning user starts without their former active personal data. Previously archived data stays archived; automatic restoration is not part of this flow. |
 | Share Everything | The returning user regains access to current shared content under the app's strategy. |
 
-Archive retention and any separate recovery capability remain unresolved lifecycle topics. A new invitation does not itself restore archived or deleted records.
+Personal archives under Share Nothing and Owner Edit are available for 30 days after departure or removal, then deleted, as defined in document 006. Archive implementation and any separate recovery capability remain open. A new invitation does not itself restore archived or deleted records.
 
 ### App retirement and owner departure
 
 When an app enters the no-participants archive/removal lifecycle, invalidate its pending invitations. Accepting an old invitation must not silently reactivate the retired app. The underlying archive timing and storage mechanics remain open in document 006.
 
-An app with remaining participants but no owner has nobody authorized to issue new invitations under these V1 rules. Existing participants can continue using it as discussed in the lifecycle design. Whether ownership can be transferred, and how that occurs, remains open; this document does not introduce a transfer mechanism.
+An app with remaining participants but no owner has nobody authorized to issue new invitations under these V1 rules. Existing participants can continue using it as discussed in the lifecycle design. Ownership transfer to an accepting active participant is now defined in document 006; V1 does not automatically elect a replacement when the owner leaves without a successor.
 
 General bearer-style links that let anyone holding them join are not the selected V1 invitation model. Copying or forwarding the prompt does not remove the verified-email requirement.
 
 ## 7. Connection and implementation details still open
 
-- Whether and how the owner can remove active members, including effects on their data and in-flight work.
-- Whether and how ownership transfer is supported, including departure of the current owner.
+- Implementation of the agreed member-removal and ownership-transfer policies in document 006, including coordination with accepted work and partial failures.
 - How pending invitations are discovered and accepted without the original prompt.
 - Exact invitation states, references, response payloads, and atomic acceptance/revocation implementation.
 - How an invite attempt for an already active member is presented; the established rule is that membership must not be duplicated.
@@ -149,7 +148,7 @@ General bearer-style links that let anyone holding them join are not the selecte
 - How are the bootstrap instructions published and updated?
 - What does the invitation reference look like, and how is it preserved during redirects and conversation changes?
 - Which authenticated operations resolve invitations, accept them, discover apps, and retrieve packs?
-- How are Build and Run connection scopes arranged for a user who joins apps and also creates their own?
+- How are tool contracts and protocol scopes implemented within the agreed single Build/Run connection, with Cloud authorizing each action?
 - How are interrupted connections, accepted invitations with incomplete pack loading, and repeated onboarding attempts resumed?
 - How are membership changes reflected in pack retrieval and subsequent skill calls?
 - How are app publication/version changes handled during onboarding?
@@ -158,4 +157,4 @@ Different-email account linking, email changes, and account recovery remain open
 
 ## 8. Suggested next step
 
-Discuss owner removal of active members and ownership transfer next. The V1 invitation lifecycle above is agreed, while those separate membership and ownership policies remain open. Then validate the complete bootstrap-to-first-operation path with one supported companion. The need to test that path is a recommendation; universal companion compatibility is not an established capability.
+Member removal and ownership transfer are now covered in document 006, with data ownership and enforcement refined in document 010. The remaining invitation-focused recommendation is to validate the complete bootstrap-to-first-operation path with one supported companion. The need to test that path is a recommendation; universal companion compatibility is not an established capability.

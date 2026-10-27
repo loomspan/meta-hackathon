@@ -108,8 +108,10 @@ The following items arose in the discussion or identify unresolved details of th
 
 ### Data access and enforcement
 
-- The assistant suggested enforcing data-access rules in the backend or database rather than relying on companion instructions. The enforcement architecture has not been agreed on.
-- The assistant raised the expectation that an app creator should not automatically gain access to other users' private data. Creator privileges and how privacy is preserved during application changes remain unresolved.
+The later [Data Ownership and Access Enforcement](010-data-ownership-and-access-enforcement.md) discussion establishes Cloud's per-request authentication and membership responsibility, DataSkill strategy enforcement, and required `ownerId` in every application table definition. App ownership grants no special access to private contributions. Share Nothing and Owner Edit now both remove a departing user's data from active use and provide a private 30-day archive.
+
+- Concrete enforcement mechanisms and how publication preserves ownership/access protections remain to be designed.
+- Keeping owned relationships together and supporting explicit cross-user references without mixing ownership are tracked as open issue **DATA-OWNERSHIP-001** in document 010.
 - The assistant suggested treating the initial strategies as starter policies composed from platform capabilities. The project owner requested extensibility, but this particular implementation approach has not been selected.
 - Combining private and shared data within one app was an assistant example, not an agreed requirement.
 

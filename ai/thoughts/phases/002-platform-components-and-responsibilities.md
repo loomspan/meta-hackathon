@@ -23,7 +23,7 @@ The **micro app-specific skill pack** describes the app's business and presentat
 
 The project owner proposed a master skill that helps the companion determine whether it is in Build or Run mode and, for Run mode, which app it is running. It would then direct the companion to download the appropriate Build or Run skill pack.
 
-This is a likely approach, not a finalized discovery or routing design. Mode switching, app selection, and the mechanics of downloading skill packs remain undefined.
+The master-skill mechanism remains tentative. The later [Companion Connection and App Discovery](011-companion-connection-and-app-discovery.md) decision establishes lightweight app summaries, full instructions loaded for the selected app, and production use by default unless the user asks to build or edit the app definition. How a fresh conversation discovers Loomspan itself remains open.
 
 ## 2. Application management
 
@@ -55,9 +55,9 @@ The mechanisms for invitations, access to shared apps, skill delivery, and updat
 
 ## 4. MCP interfaces
 
-The tentative direction is to provide separate **Build** and **Run** remote MCP interfaces, likely authenticated through Supabase Auth.
+The current direction is **one Loomspan connection per companion for both Build and Run**, with Cloud enforcing permissions for each action. This supersedes the earlier tentative separate-connection direction; Build and Run remain distinct capabilities and instruction packs. See [Companion Connection and App Discovery](011-companion-connection-and-app-discovery.md).
 
-The project owner hopes the Run MCP can be general enough for every app on the platform to use the same MCP interface. This is an architectural objective to investigate, not a confirmed topology or tool design.
+The connection serves the user's accessible apps without separate per-app connections. Internal endpoint topology and exact tool contracts remain to be designed.
 
 Authentication flows, tool definitions, app context, and the relationship between logical interfaces and deployed servers remain unresolved.
 
@@ -115,7 +115,7 @@ The following comparison identifies what the new outline clarifies and what stil
 | Published micro app definition | Several constituent artifacts have been described, but their packaging and relationships remain undefined. |
 | Application management | Adds a desired Git-like workflow and companion-assisted backups; detailed publication, evolution, and fork mechanics remain open. |
 | Skill hosting and delivery | Sharing and inviting are the initial direction; a browsable directory is a future possibility. Delivery mechanics remain open. |
-| MCP interfaces | Tentative Build and Run remote interfaces, likely Supabase Auth, and a desired common Run MCP across apps. |
+| MCP interfaces | One connection per companion for Build and Run across accessible apps; Cloud authorizes each action. Exact tool contracts remain open. |
 | Hosted execution | Initial candidates are data skills, TypeSafe skills, and validation capabilities. The boundary for adding executable skills remains open. |
 | Validation and retries | Candidate checks and possible integration models are identified; execution and retry behavior remain open. |
 | Identity and data access | Further exploration depends on data-skill design; attaching strategies to data skills is one possibility. |
