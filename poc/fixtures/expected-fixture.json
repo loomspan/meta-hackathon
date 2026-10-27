@@ -1,0 +1,27 @@
+{
+  "app": { "id": "grocery-list", "current_version": 1 },
+  "definition": {
+    "app_id": "grocery-list",
+    "version": 1,
+    "operations": [
+      { "name": "list_items", "kind": "read", "arguments": [] },
+      {
+        "name": "add_item",
+        "kind": "write",
+        "arguments": [
+          { "name": "name", "type": "string", "required": true, "min_length": 1, "trim": true },
+          { "name": "quantity", "type": "integer", "required": true, "minimum": 1 }
+        ]
+      }
+    ]
+  },
+  "packs": [
+    { "id": "build", "kind": "build", "version": 1 },
+    { "id": "run", "kind": "run", "version": 1 },
+    { "id": "grocery-list", "kind": "app", "version": 1 }
+  ],
+  "membership": { "app_id": "grocery-list", "role": "owner", "placeholder_user_id": "00000000-0000-4000-8000-000000000001" },
+  "items": [["Oats", 2], ["Apples", 4], ["Milk", 1]],
+  "required_grocery_pack_phrases": ["alphabetically", "count", "ask"],
+  "forbidden_in_definition_phrases": ["alphabetical"]
+}
