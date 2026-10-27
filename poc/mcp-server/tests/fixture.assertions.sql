@@ -23,6 +23,22 @@ BEGIN
     RAISE EXCEPTION 'add_item write operation with argument definitions missing from definition v1';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM poc_app_definitions d
+    WHERE d.app_id = 'grocery-list' AND d.version = 1
+      AND d.definition @> '{"operations":[{"name":"list_items","effect":{"action":"list","resource":"grocery_items","order":[{"field":"id","direction":"asc"}]}}]}'::jsonb
+  ) THEN
+    RAISE EXCEPTION 'list_items effect missing from definition v1';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM poc_app_definitions d
+    WHERE d.app_id = 'grocery-list' AND d.version = 1
+      AND d.definition @> '{"operations":[{"name":"add_item","effect":{"action":"insert","resource":"grocery_items","fields":["name","quantity"]}}]}'::jsonb
+  ) THEN
+    RAISE EXCEPTION 'add_item effect missing from definition v1';
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM poc_app_definitions d
     WHERE d.app_id = 'grocery-list' AND d.version = 1

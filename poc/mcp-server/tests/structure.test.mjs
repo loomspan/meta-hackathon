@@ -13,7 +13,9 @@ test('poc scaffold exists with required structure', () => {
     'poc/mcp-server/supabase/config.toml',
     'poc/mcp-server/supabase/migrations/20261027000001_poc_fixture_schema.sql',
     'poc/mcp-server/supabase/seed.sql',
-    'poc/mcp-server/supabase/functions/mcp/.gitkeep',
+    'poc/mcp-server/supabase/functions/mcp/index.ts',
+    'poc/mcp-server/supabase/functions/mcp/core.ts',
+    'poc/mcp-server/supabase/functions/mcp/data.ts',
     'poc/mcp-server/.env.example',
     'poc/web/.gitkeep',
     'poc/fixtures/expected-fixture.json',
@@ -25,9 +27,14 @@ test('poc scaffold exists with required structure', () => {
 });
 
 test('placeholder directories contain only placeholders', () => {
-  for (const dir of ['poc/web', 'poc/mcp-server/supabase/functions/mcp']) {
-    const entries = readdirSync(p(dir));
-    assert.deepEqual(entries, ['.gitkeep'], `${dir} must contain only .gitkeep, found: ${entries}`);
+  const entries = readdirSync(p('poc/web'));
+  assert.deepEqual(entries, ['.gitkeep'], `poc/web must contain only .gitkeep, found: ${entries}`);
+});
+
+test('mcp function directory contains the Gate 1 function files', () => {
+  const entries = readdirSync(p('poc/mcp-server/supabase/functions/mcp'));
+  for (const name of ['index.ts', 'core.ts', 'data.ts']) {
+    assert.ok(entries.includes(name), `functions/mcp must contain ${name}, found: ${entries}`);
   }
 });
 

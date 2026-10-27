@@ -4,14 +4,15 @@
     "app_id": "grocery-list",
     "version": 1,
     "operations": [
-      { "name": "list_items", "kind": "read", "arguments": [] },
+      { "name": "list_items", "kind": "read", "arguments": [], "effect": { "action": "list", "resource": "grocery_items", "order": [{ "field": "id", "direction": "asc" }] } },
       {
         "name": "add_item",
         "kind": "write",
         "arguments": [
           { "name": "name", "type": "string", "required": true, "min_length": 1, "trim": true },
           { "name": "quantity", "type": "integer", "required": true, "minimum": 1 }
-        ]
+        ],
+        "effect": { "action": "insert", "resource": "grocery_items", "fields": ["name", "quantity"] }
       }
     ]
   },
