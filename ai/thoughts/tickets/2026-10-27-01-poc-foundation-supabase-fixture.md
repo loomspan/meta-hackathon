@@ -32,7 +32,7 @@ Without this, every later POC ticket would be built on unverified beta platform 
 
 ## Context
 
-Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Planned test configuration, Repository structure, Smallest useful test fixture). This is ticket 1 of 4 for Gate 1 and has no ticket dependencies. The MCP server is the next ticket (`2026-10-27-poc-mcp-server-gate1-tools.md`); the web/OAuth pages and the Gate 1 run follow it. Gate 2 scope (publication tools, second/third apps, phone apps) is explicitly excluded here.
+Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Planned test configuration, Repository structure, Smallest useful test fixture). This is ticket 1 of 4 for Gate 1 and has no ticket dependencies. The MCP server is the next ticket (`2026-10-27-02-poc-mcp-server-gate1-tools.md`); the web/OAuth pages and the Gate 1 run follow it. Gate 2 scope (publication tools, second/third apps, phone apps) is explicitly excluded here.
 
 ## Execution profile
 

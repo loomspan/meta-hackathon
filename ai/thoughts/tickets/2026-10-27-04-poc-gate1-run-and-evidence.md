@@ -38,7 +38,7 @@ This is the experiment the POC exists for: whether ordinary users can connect, l
 
 ## Context
 
-Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Gate 1, Proposed effort and usability gates, Results worksheet, Decision after the experiment). This is ticket 4 of 4 for Gate 1. It depends on `2026-10-27-poc-web-oauth-onboarding-consent.md` (live onboarding/consent and a proven reference OAuth flow). Gate 2 (validation feedback at scale, publication tools, additional apps, phone apps on iPhone/iPad, deferred Claude/Gemini web) is out of scope and gets its own tickets only after the Gate 1 decision recorded here.
+Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Gate 1, Proposed effort and usability gates, Results worksheet, Decision after the experiment). This is ticket 4 of 4 for Gate 1. It depends on `2026-10-27-03-poc-web-oauth-onboarding-consent.md` (live onboarding/consent and a proven reference OAuth flow). Gate 2 (validation feedback at scale, publication tools, additional apps, phone apps on iPhone/iPad, deferred Claude/Gemini web) is out of scope and gets its own tickets only after the Gate 1 decision recorded here.
 
 ## Execution profile
 

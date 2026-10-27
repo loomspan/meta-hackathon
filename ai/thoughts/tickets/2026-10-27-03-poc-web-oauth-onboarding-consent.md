@@ -33,7 +33,7 @@ Gate 1 cannot pass on a no-auth transport smoke test, so this ticket proves the 
 
 ## Context
 
-Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Planned test configuration, Gate 1 G1.1). This is ticket 3 of 4 for Gate 1. It depends on `2026-10-27-poc-mcp-server-gate1-tools.md` (live MCP endpoint and tools) and on the foundation ticket's preflight evidence. The scored companion runs are the final ticket (`2026-10-27-poc-gate1-run-and-evidence.md`). Fixing MCP server or schema defects discovered here belongs to those earlier tickets, not to web-page workarounds.
+Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Planned test configuration, Gate 1 G1.1). This is ticket 3 of 4 for Gate 1. It depends on `2026-10-27-02-poc-mcp-server-gate1-tools.md` (live MCP endpoint and tools) and on the foundation ticket's preflight evidence. The scored companion runs are the final ticket (`2026-10-27-04-poc-gate1-run-and-evidence.md`). Fixing MCP server or schema defects discovered here belongs to those earlier tickets, not to web-page workarounds.
 
 ## Execution profile
 

@@ -34,7 +34,7 @@ This is the runtime the Gate 1 questions depend on: one generic connection servi
 
 ## Context
 
-Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Hypotheses, Smallest useful test fixture, Gate 1 tool contract). This is ticket 2 of 4 for Gate 1. It depends on `2026-10-27-poc-foundation-supabase-fixture.md` (schema, seed, packs, membership, preflight evidence). The OAuth consent page that makes real companion sign-in usable is the next ticket (`2026-10-27-poc-web-oauth-onboarding-consent.md`); this ticket may be verified with tokens obtained through Supabase Auth directly.
+Governing plan: `ai/thoughts/plans/proof_of_concept.md` (Hypotheses, Smallest useful test fixture, Gate 1 tool contract). This is ticket 2 of 4 for Gate 1. It depends on `2026-10-27-01-poc-foundation-supabase-fixture.md` (schema, seed, packs, membership, preflight evidence). The OAuth consent page that makes real companion sign-in usable is the next ticket (`2026-10-27-03-poc-web-oauth-onboarding-consent.md`); this ticket may be verified with tokens obtained through Supabase Auth directly.
 
 ## Execution profile
 
