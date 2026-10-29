@@ -184,6 +184,30 @@ Deno.test("call_operation executes a DB-added remove_item operation with no serv
   assert(pack.operations.some((o: any) => o.name === "remove_item"));
 });
 
+Deno.test("G1.7 sequence: stale v1 call mutates nothing, get_pack + v2 retry writes exactly once", async () => {
+  // Simulate applying the version-2 fixture update artifact to a v1 fixture:
+  // a version-2 definition adding remove_item, and the app bumped to version 2.
+  const repo = new FakeRepo();
+  const v2 = v1Definition();
+  v2.operations.push({ name: "remove_item", kind: "write", description: "Remove by name.", arguments: [{ name: "name", type: "string", required: true, min_length: 1, trim: true }], effect: { action: "delete", resource: "grocery_items", match: ["name"] } });
+  repo.definitions.set("grocery-list:2", v2);
+  repo.app.current_version = 2;
+  // A call still carrying version 1 is rejected stale_version before mutation.
+  const stale: any = await call(repo, OWNER, { operation: "remove_item", app_version: 1, arguments: { name: "Milk" } });
+  eq(stale, { ok: false, error_code: "stale_version", current_version: 2, guidance: "Call get_pack for this app, then retry once with the current app_version." });
+  eq(repo.mutations, 0);
+  eq(repo.items.map((i) => i.name), ["Oats", "Apples", "Milk"]);
+  // The companion reloads the pack, sees remove_item at version 2, and retries once.
+  const pack: any = await handleGetPack(repo, OWNER, "grocery-list");
+  eq(pack.pack.version, 2);
+  assert(pack.operations.some((o: any) => o.name === "remove_item"));
+  const retried: any = await call(repo, OWNER, { operation: "remove_item", app_version: 2, arguments: { name: "Milk" } });
+  eq(retried.ok, true);
+  eq(retried.removed.map((i: any) => i.name), ["Milk"]);
+  eq(repo.mutations, 1, "exactly one write across the stale call and the retry");
+  eq(repo.items.map((i) => i.name), ["Oats", "Apples"]);
+});
+
 Deno.test("list effect order direction is honored and effect fields must be required", async () => {
   const repo = new FakeRepo();
   const descDef = v1Definition();
