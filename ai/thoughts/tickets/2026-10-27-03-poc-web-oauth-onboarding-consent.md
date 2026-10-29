@@ -23,13 +23,13 @@ Gate 1 cannot pass on a no-auth transport smoke test, so this ticket proves the 
 
 ## Acceptance criteria
 
-- [ ] `https://loomspan.ai/poc/` serves the onboarding page with Muse and ChatGPT web setup steps and the copyable entry prompt, deployed via the separate `loomspan.ai` repository.
-- [ ] `https://loomspan.ai/poc/oauth/consent` serves the consent page (not a main-site fallback or redirect), built with the `/poc/` base path.
-- [ ] A reference OAuth flow completes discovery, dynamic registration, sign-in, and consent approval, receives a token, and makes an authenticated `list_apps` call.
-- [ ] The consent page shows the requesting client and requested access before the user decides, and `authorization_id` survives sign-in.
-- [ ] A denied consent produces no authenticated tool call.
-- [ ] The deployed web output and `poc/web/` source contain no service-role key, credential, or token.
-- [ ] Any OAuth failure encountered is recorded with its step, redacted evidence, and classification as cause-unconfirmed until investigated; any workaround is written into the onboarding steps with its added user burden stated.
+- [x] `https://loomspan.ai/poc/` serves the onboarding page with Muse and ChatGPT web setup steps and the copyable entry prompt, deployed via the separate `loomspan.ai` repository.
+- [x] `https://loomspan.ai/poc/oauth/consent` serves the consent page (not a main-site fallback or redirect), built with the `/poc/` base path.
+- [x] A reference OAuth flow completes discovery, dynamic registration, sign-in, and consent approval, receives a token, and makes an authenticated `list_apps` call.
+- [x] The consent page shows the requesting client and requested access before the user decides, and `authorization_id` survives sign-in.
+- [x] A denied consent produces no authenticated tool call.
+- [x] The deployed web output and `poc/web/` source contain no service-role key, credential, or token.
+- [x] Any OAuth failure encountered is recorded with its step, redacted evidence, and classification as cause-unconfirmed until investigated; any workaround is written into the onboarding steps with its added user burden stated.
 
 ## Context
 

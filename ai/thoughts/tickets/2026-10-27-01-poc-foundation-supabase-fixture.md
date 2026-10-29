@@ -24,11 +24,11 @@ Without this, every later POC ticket would be built on unverified beta platform 
 
 ## Acceptance criteria
 
-- [ ] Redacted preflight evidence is recorded in `poc/README.md` showing OAuth 2.1 server availability, dynamic client registration availability, and asymmetric JWT signing for Loomspan Testing — or the specific unavailable item is recorded as a blocker with cause unconfirmed.
-- [ ] `poc/` exists with the structure above, and no POC files exist at the project root.
-- [ ] Migrations/seed in the repository recreate the fixture from an empty schema: grocery app definition at version 1 with `list_items` and `add_item`, Build/Run/grocery packs retrievable as stored records, owner membership, seeded synthetic items, and the tool-call log table.
-- [ ] The stored grocery pack contains the alphabetical-with-count-header rule and the ask-for-quantity rule; the seeded server data and definition do not implement alphabetical ordering.
-- [ ] No credential, token, service-role key, or secret value appears anywhere in the committed scaffold, migrations, seed, or README.
+- [x] Redacted preflight evidence is recorded in `poc/README.md` showing OAuth 2.1 server availability, dynamic client registration availability, and asymmetric JWT signing for Loomspan Testing — or the specific unavailable item is recorded as a blocker with cause unconfirmed.
+- [x] `poc/` exists with the structure above, and no POC files exist at the project root.
+- [x] Migrations/seed in the repository recreate the fixture from an empty schema: grocery app definition at version 1 with `list_items` and `add_item`, Build/Run/grocery packs retrievable as stored records, owner membership, seeded synthetic items, and the tool-call log table.
+- [x] The stored grocery pack contains the alphabetical-with-count-header rule and the ask-for-quantity rule; the seeded server data and definition do not implement alphabetical ordering.
+- [x] No credential, token, service-role key, or secret value appears anywhere in the committed scaffold, migrations, seed, or README.
 
 ## Context
 

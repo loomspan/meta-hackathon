@@ -23,14 +23,14 @@ This is the runtime the Gate 1 questions depend on: one generic connection servi
 
 ## Acceptance criteria
 
-- [ ] An authenticated owner call to `list_apps` returns the grocery-list summary without pack instructions; an unauthenticated call is rejected.
-- [ ] `get_pack` returns the Build, Run, and grocery packs by ID, each with its version, instructions, and (for the app pack) operation and argument definitions.
-- [ ] Through `call_operation`, the owner can list items (insertion order) and add an item; the added item persists and appears in a later list.
-- [ ] `add_item` with an empty name or an invalid quantity mutates nothing and returns actionable guidance.
-- [ ] A `call_operation` carrying the previous `app_version` after a version bump mutates nothing and returns the `stale_version` response with current version and reload guidance.
-- [ ] After the app-definition row is updated in Postgres to add a new operation (no function code change, no redeploy), `get_pack` shows it and `call_operation` executes it.
-- [ ] A signed-in user without a membership row cannot list or mutate grocery items, and each rejected call is recorded.
-- [ ] The tool-call log contains entries for the calls above with no credentials or tokens stored.
+- [x] An authenticated owner call to `list_apps` returns the grocery-list summary without pack instructions; an unauthenticated call is rejected.
+- [x] `get_pack` returns the Build, Run, and grocery packs by ID, each with its version, instructions, and (for the app pack) operation and argument definitions.
+- [x] Through `call_operation`, the owner can list items (insertion order) and add an item; the added item persists and appears in a later list.
+- [x] `add_item` with an empty name or an invalid quantity mutates nothing and returns actionable guidance.
+- [ ] A `call_operation` carrying the previous `app_version` after a version bump mutates nothing and returns the `stale_version` response with current version and reload guidance. (Formal hosted proof carried into ticket 4, G1.7; local Deno proof and a hosted wrong-version probe passed 2026-10-27 - see `poc/README.md` "Progress and handoff".)
+- [ ] After the app-definition row is updated in Postgres to add a new operation (no function code change, no redeploy), `get_pack` shows it and `call_operation` executes it. (Hosted proof carried into ticket 4, G1.6; local Deno proof with a fake repository passed 2026-10-27 - see `poc/README.md` "Progress and handoff".)
+- [x] A signed-in user without a membership row cannot list or mutate grocery items, and each rejected call is recorded.
+- [x] The tool-call log contains entries for the calls above with no credentials or tokens stored.
 
 ## Context
 

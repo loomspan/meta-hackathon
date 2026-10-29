@@ -17,7 +17,11 @@ test('poc scaffold exists with required structure', () => {
     'poc/mcp-server/supabase/functions/mcp/core.ts',
     'poc/mcp-server/supabase/functions/mcp/data.ts',
     'poc/mcp-server/.env.example',
-    'poc/web/.gitkeep',
+    'poc/web/index.html',
+    'poc/web/oauth/consent.html',
+    'poc/web/assets/consent-core.mjs',
+    'poc/web/assets/consent.js',
+    'poc/web/assets/config.js',
     'poc/fixtures/expected-fixture.json',
     'poc/mcp-server/tests/fixture.assertions.sql',
   ];
@@ -26,9 +30,12 @@ test('poc scaffold exists with required structure', () => {
   }
 });
 
-test('placeholder directories contain only placeholders', () => {
+test('poc/web contains the ticket-3 pages and no placeholder', () => {
   const entries = readdirSync(p('poc/web'));
-  assert.deepEqual(entries, ['.gitkeep'], `poc/web must contain only .gitkeep, found: ${entries}`);
+  for (const name of ['index.html', 'oauth', 'assets']) {
+    assert.ok(entries.includes(name), `poc/web must contain ${name}, found: ${entries}`);
+  }
+  assert.ok(!entries.includes('.gitkeep'), '.gitkeep must be removed once real web files exist');
 });
 
 test('mcp function directory contains the Gate 1 function files', () => {
