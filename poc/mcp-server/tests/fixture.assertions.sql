@@ -103,14 +103,58 @@ BEGIN
   END IF;
   IF (SELECT count(*) FROM information_schema.columns
       WHERE table_name = 'poc_tool_call_log'
-        AND column_name IN ('user_id', 'app_id', 'operation', 'app_version', 'outcome', 'created_at')) <> 6 THEN
-    RAISE EXCEPTION 'tool_call_log missing required columns user/app/operation/app_version/outcome/timestamp';
+        AND column_name IN ('account_id', 'app_id', 'operation', 'app_version', 'outcome', 'created_at')) <> 6 THEN
+    RAISE EXCEPTION 'tool_call_log missing required columns account/app/operation/app_version/outcome/timestamp';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name IN ('poc_tool_call_log', 'poc_app_memberships') AND column_name = 'user_id') THEN
+    RAISE EXCEPTION 'user_id must be renamed to account_id';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'poc_tool_call_log' AND column_name = 'user_id' AND is_nullable = 'YES'
+    WHERE table_name = 'poc_tool_call_log' AND column_name = 'account_id' AND is_nullable = 'YES'
   ) THEN
-    RAISE EXCEPTION 'tool_call_log.user_id must be nullable for rejected/unauthenticated calls';
+    RAISE EXCEPTION 'tool_call_log.account_id must be nullable for rejected/unauthenticated calls';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'poc_accounts') THEN
+    RAISE EXCEPTION 'poc_accounts missing';
+  END IF;
+  IF (SELECT count(*) FROM poc_accounts) <> 0 THEN
+    RAISE EXCEPTION 'poc_accounts must start empty after seed';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
+    WHERE t.relname = 'poc_accounts' AND c.contype = 'u'
+      AND pg_get_constraintdef(c.oid) ILIKE '%normalized_email%'
+  ) THEN
+    RAISE EXCEPTION 'poc_accounts.normalized_email must be unique';
+  END IF;
+  IF (SELECT count(*) FROM poc_app_memberships WHERE app_id = 'grocery-list') <> 1
+     OR NOT EXISTS (SELECT 1 FROM poc_app_memberships WHERE app_id = 'grocery-list' AND account_id = '00000000-0000-4000-8000-000000000001') THEN
+    RAISE EXCEPTION 'expected one grocery membership with placeholder account_id';
+  END IF;
+END $$;
+
+-- Canonical-email probes (each rolled back by the exception handler scope):
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO poc_accounts (normalized_email) VALUES ('Owner@Example.com');
+    RAISE EXCEPTION 'non-canonical uppercase email was accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO poc_accounts (normalized_email) VALUES (' owner@example.com ');
+    RAISE EXCEPTION 'non-canonical padded email was accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO poc_accounts (normalized_email) VALUES ('probe@example.com');
+    INSERT INTO poc_accounts (normalized_email) VALUES ('probe@example.com');
+    RAISE EXCEPTION 'duplicate normalized_email was accepted';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+  IF (SELECT count(*) FROM poc_accounts) <> 0 THEN
+    RAISE EXCEPTION 'account probes changed poc_accounts row count';
   END IF;
 END $$;
 

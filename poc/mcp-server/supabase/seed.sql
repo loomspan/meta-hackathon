@@ -48,9 +48,10 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Placeholder only: 00000000-0000-4000-8000-000000000001 is not a real identity.
-INSERT INTO poc_app_memberships (app_id, user_id, role)
+-- It is a placeholder account ID, not a Supabase user ID.
+INSERT INTO poc_app_memberships (app_id, account_id, role)
 VALUES ('grocery-list', '00000000-0000-4000-8000-000000000001', 'owner')
-ON CONFLICT (app_id, user_id) DO NOTHING;
+ON CONFLICT (app_id, account_id) DO NOTHING;
 
 INSERT INTO poc_grocery_items (app_id, name, quantity)
 SELECT 'grocery-list', v.name, v.quantity

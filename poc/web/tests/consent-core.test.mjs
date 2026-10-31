@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   parseAuthorizationId, isRedirectOnly, formatScopes,
   describeAuthorization, loadAuthorization, decideAuthorization,
+  requestEmailCode, verifyEmailCode, signOut, MISSING_OTP_MESSAGE,
 } from '../assets/consent-core.mjs';
 
 function stubOAuth(impl) {
@@ -88,6 +89,68 @@ test('missing auth.oauth namespace fails closed with a friendly, non-raw message
       assert.equal(r.kind, 'error');
       assert.ok(!/Cannot read properties/.test(r.message), `raw TypeError leaked: ${r.message}`);
     }
+  }
+});
+
+function stubOtp(impl) {
+  const calls = [];
+  const auth = { oauth: { getAuthorizationDetails: async () => { calls.push(['getAuthorizationDetails', []]); return { data: detailsData, error: null }; }, approveAuthorization: async () => { calls.push(['approveAuthorization', []]); return { data: {}, error: null }; }, denyAuthorization: async () => { calls.push(['denyAuthorization', []]); return { data: {}, error: null }; } } };
+  for (const name of ['signInWithOtp', 'verifyOtp']) {
+    if (impl[name]) auth[name] = async (...args) => { calls.push([name, args]); return impl[name](...args); };
+  }
+  return { supabase: { auth }, calls };
+}
+
+test('requestEmailCode sends trimmed email with shouldCreateUser', async () => {
+  const { supabase, calls } = stubOtp({ signInWithOtp: async () => ({ data: {}, error: null }) });
+  assert.deepEqual(await requestEmailCode(supabase, '  tester@example.invalid '), { kind: 'ok' });
+  assert.deepEqual(calls, [['signInWithOtp', [{ email: 'tester@example.invalid', options: { shouldCreateUser: true } }]]]);
+});
+
+test('verifyEmailCode maps a wrong-code error without signing in', async () => {
+  const { supabase, calls } = stubOtp({ verifyOtp: async () => ({ data: { session: null }, error: { name: 'AuthApiError', message: 'Token has expired or is invalid' } }) });
+  const r = await verifyEmailCode(supabase, 'tester@example.invalid', '000000');
+  assert.equal(r.kind, 'error');
+  assert.ok(!r.message.includes('000000') && !r.message.includes('tester@example.invalid'));
+  assert.deepEqual(calls, [['verifyOtp', [{ email: 'tester@example.invalid', token: '000000', type: 'email' }]]]);
+});
+
+test('verifyEmailCode expired, thrown, retry and resend', async () => {
+  let attempts = 0;
+  const { supabase, calls } = stubOtp({
+    signInWithOtp: async () => ({ data: {}, error: null }),
+    verifyOtp: async () => { attempts++; return attempts < 2 ? { data: null, error: { message: 'expired' } } : { data: { session: {} }, error: null }; },
+  });
+  assert.equal((await verifyEmailCode(supabase, 'tester@example.invalid', '111111')).kind, 'error');
+  assert.equal((await verifyEmailCode(supabase, 'tester@example.invalid', '123456')).kind, 'ok');
+  assert.deepEqual(await requestEmailCode(supabase, 'tester@example.invalid'), { kind: 'ok' });
+  assert.equal(calls.filter((c) => c[0] === 'signInWithOtp').length, 1);
+  assert.ok(!calls.some((c) => ['getAuthorizationDetails', 'approveAuthorization', 'denyAuthorization'].includes(c[0])));
+  const thrown = stubOtp({ verifyOtp: async () => { throw new Error('network down'); } });
+  assert.equal((await verifyEmailCode(thrown.supabase, 'tester@example.invalid', '123456')).kind, 'error');
+});
+
+test('missing OTP methods fail closed with friendly message', async () => {
+  for (const supabase of [null, {}, { auth: {} }, { auth: { oauth: {} } }]) {
+    for (const r of [await requestEmailCode(supabase, 'tester@example.invalid'), await verifyEmailCode(supabase, 'tester@example.invalid', '123456')]) {
+      assert.equal(r.kind, 'error'); assert.equal(r.message, MISSING_OTP_MESSAGE);
+      assert.ok(!/Cannot read properties/.test(r.message));
+    }
+  }
+});
+
+test('signOut calls auth.signOut once and maps errors without deciding authorization', async () => {
+  const calls = [];
+  const ok = { auth: { signOut: async () => { calls.push('signOut'); return { error: null }; }, oauth: { approveAuthorization: async () => { calls.push('approve'); return { data: {}, error: null }; }, denyAuthorization: async () => { calls.push('deny'); return { data: {}, error: null }; } } } };
+  assert.deepEqual(await signOut(ok), { kind: 'ok' });
+  assert.deepEqual(calls, ['signOut']);
+  const failing = { auth: { signOut: async () => ({ error: { message: 'network down' } }) } };
+  assert.equal((await signOut(failing)).kind, 'error');
+  const thrown = { auth: { signOut: async () => { throw new Error('network down'); } } };
+  assert.equal((await signOut(thrown)).kind, 'error');
+  for (const supabase of [null, {}, { auth: {} }]) {
+    const r = await signOut(supabase);
+    assert.equal(r.kind, 'error'); assert.ok(!/Cannot read properties/.test(r.message));
   }
 });
 

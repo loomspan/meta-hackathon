@@ -14,12 +14,16 @@ function unwrap<T>(result: { data: T; error: unknown }): T {
 
 export function createSupabaseRepo(client: Client): FixtureRepo {
   return {
+    async resolveOrCreateAccount(normalizedEmail: string): Promise<string> {
+      const data = unwrap(await client.from("poc_accounts").upsert({ normalized_email: normalizedEmail }, { onConflict: "normalized_email" }).select("id").single());
+      return (data as { id: string }).id;
+    },
     async loadApp(appId: string): Promise<AppRow | null> {
       const data = unwrap(await client.from("poc_apps").select("id,name,summary,current_version,environments").eq("id", appId).maybeSingle());
       return (data as AppRow | null) ?? null;
     },
-    async listMemberApps(userId: string): Promise<AppRow[]> {
-      const rows = unwrap(await client.from("poc_app_memberships").select("app_id").eq("user_id", userId)) ?? [];
+    async listMemberApps(accountId: string): Promise<AppRow[]> {
+      const rows = unwrap(await client.from("poc_app_memberships").select("app_id").eq("account_id", accountId)) ?? [];
       const apps: AppRow[] = [];
       for (const row of rows as Array<{ app_id: string }>) {
         const data = unwrap(await client.from("poc_apps").select("id,name,summary,current_version,environments").eq("id", row.app_id).maybeSingle());
@@ -35,8 +39,8 @@ export function createSupabaseRepo(client: Client): FixtureRepo {
       const data = unwrap(await client.from("poc_packs").select("id,kind,app_id,version,title,instructions").eq("id", packId).maybeSingle());
       return (data as PackRow | null) ?? null;
     },
-    async isMember(appId: string, userId: string): Promise<boolean> {
-      const data = unwrap(await client.from("poc_app_memberships").select("app_id").eq("app_id", appId).eq("user_id", userId).maybeSingle());
+    async isMember(appId: string, accountId: string): Promise<boolean> {
+      const data = unwrap(await client.from("poc_app_memberships").select("app_id").eq("app_id", appId).eq("account_id", accountId).maybeSingle());
       return data !== null && data !== undefined;
     },
     async listItems(appId: string): Promise<ItemRow[]> {
@@ -55,7 +59,7 @@ export function createSupabaseRepo(client: Client): FixtureRepo {
     },
     async insertLog(row: LogRow): Promise<void> {
       unwrap(await client.from("poc_tool_call_log").insert({
-        user_id: row.user_id, app_id: row.app_id, operation: row.operation,
+        account_id: row.account_id, app_id: row.app_id, operation: row.operation,
         app_version: row.app_version, environment: row.environment,
         outcome: row.outcome, error_code: row.error_code,
       }));

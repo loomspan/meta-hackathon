@@ -4,8 +4,9 @@
 // and a developer signing in and approving/denying in a browser.
 //
 // Usage:
-//   node poc/web/tests/oauth-reference-flow.mjs          # approval run
+//   node poc/web/tests/oauth-reference-flow.mjs          # owner approval + grocery exercise
 //   node poc/web/tests/oauth-reference-flow.mjs --deny   # denial run
+//   node poc/web/tests/oauth-reference-flow.mjs --expect-nonmember  # non-member run
 // Optional env: POC_SUPABASE_URL, POC_MCP_URL (recorded project defaults).
 // No password is read here. Step output is redacted by construction: it
 // prints step names, HTTP statuses, ok/error_code, token_type/expires_in,
@@ -18,6 +19,7 @@ import { createServer } from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
 
 const denyMode = process.argv.includes('--deny');
+const nonmemberMode = process.argv.includes('--expect-nonmember');
 const supabaseUrl = (process.env.POC_SUPABASE_URL ?? 'https://yjrwyfkybszlpufsflan.supabase.co').replace(/\/$/, '');
 const mcpUrl = process.env.POC_MCP_URL ?? `${supabaseUrl}/functions/v1/mcp`;
 const redirectUri = 'http://127.0.0.1:8765/callback';
@@ -127,14 +129,53 @@ async function mcpCall(accessToken, sessionId, name, args) {
 
 const init = await mcpCall(token.access_token, null, null, null);
 assert.equal(init.status, 200, `MCP initialize failed: HTTP ${init.status}`);
-const appsCall = await mcpCall(token.access_token, init.sessionId, 'list_apps', {});
-assert.equal(appsCall.status, 200, `list_apps failed: HTTP ${appsCall.status}`);
-const result = appsCall.payload?.result ?? {};
-const structured = result.structuredContent
-  ?? JSON.parse(result.content?.find((c) => c.type === 'text')?.text ?? '{}');
+let sessionId = init.sessionId;
+async function toolCall(name, args) {
+  const call = await mcpCall(token.access_token, sessionId, name, args);
+  sessionId = call.sessionId;
+  assert.equal(call.status, 200, `${name} failed: HTTP ${call.status}`);
+  const r = call.payload?.result ?? {};
+  return r.structuredContent ?? JSON.parse(r.content?.find((c) => c.type === 'text')?.text ?? '{}');
+}
+
+const structured = await toolCall('list_apps', {});
 assert.equal(structured.ok, true, `list_apps not ok: ${structured.error_code ?? 'unknown'}`);
+
+if (nonmemberMode) {
+  assert.equal(structured.apps?.length, 0, `non-member must see zero apps, got ${structured.apps?.length}`);
+  console.log('PASS non-member list_apps: ok=true, app_ids=[]');
+  const pack = await toolCall('get_pack', { pack_id: 'grocery-list' });
+  assert.equal(pack.error_code, 'not_member', `non-member get_pack expected not_member, got ${pack.error_code}`);
+  const op = await toolCall('call_operation', { app_id: 'grocery-list', app_version: 1, operation: 'list_items', arguments: {} });
+  assert.equal(op.error_code, 'not_member', `non-member call_operation expected not_member, got ${op.error_code}`);
+  // Email as a tool argument is never identity evidence: membership still
+  // precedes argument validation, so this also stays not_member.
+  const spoof = await toolCall('call_operation', { app_id: 'grocery-list', app_version: 1, operation: 'list_items', arguments: { email: 'owner-not-recorded@example.invalid' } });
+  assert.equal(spoof.error_code, 'not_member', `email-argument call must stay non-member, got ${spoof.error_code}`);
+  console.log('PASS non-member: grocery get_pack/call_operation not_member; email argument did not change identity');
+  console.log('DONE: non-member reference flow passed.');
+  process.exit(0);
+}
+
 assert.equal(structured.apps?.length, 1, `owner must see exactly one app, got ${structured.apps?.length}`);
 assert.equal(structured.apps[0].app_id, 'grocery-list');
 assert.ok(!('instructions' in structured.apps[0]) && !('operations' in structured.apps[0]), 'list_apps leaked pack content');
 console.log('PASS authenticated list_apps: ok=true, app_ids=[grocery-list] (summary only)');
+
+// Owner grocery exercise: seeded items visible, add persists on re-list.
+const pack = await toolCall('get_pack', { pack_id: 'grocery-list' });
+assert.equal(pack.ok, true, `owner get_pack not ok: ${pack.error_code ?? 'unknown'}`);
+const version = pack.pack?.version ?? 1;
+const before = await toolCall('call_operation', { app_id: 'grocery-list', app_version: version, operation: 'list_items', arguments: {} });
+assert.equal(before.ok, true, 'owner list_items failed');
+for (const [name, quantity] of [['Oats', 2], ['Apples', 4], ['Milk', 1]]) {
+  assert.ok(before.items?.some((i) => i.name === name && i.quantity === quantity), `seeded item ${name}/${quantity} missing`);
+}
+console.log('PASS owner list_items: seeded Oats/2, Apples/4, Milk/1 visible');
+const synthetic = `Race-check synthetic ${Date.now()}`;
+const added = await toolCall('call_operation', { app_id: 'grocery-list', app_version: version, operation: 'add_item', arguments: { name: synthetic, quantity: 1 } });
+assert.equal(added.ok, true, 'owner add_item failed');
+const after = await toolCall('call_operation', { app_id: 'grocery-list', app_version: version, operation: 'list_items', arguments: {} });
+assert.ok(after.items?.some((i) => i.name === synthetic), 'added item did not persist');
+console.log('PASS owner add_item: synthetic item persisted on re-list (clean it up per README reset discipline)');
 console.log('DONE: approval reference flow passed.');

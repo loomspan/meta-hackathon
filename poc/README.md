@@ -14,10 +14,11 @@ Read this section first when resuming. Everything below it is the supporting evi
 | 2 — MCP server Gate 1 tools (`ai/thoughts/tickets/2026-10-27-02-*.md`) | Verified locally and hosted, except two formal hosted proofs carried into ticket 4 (see below). | Node suites 17/17; Deno core tests 7/7; function `mcp` deployed ACTIVE v1; unauthenticated probe HTTP 401 with `WWW-Authenticate`; `hosted-acceptance.mjs` full run passed (results paragraph under "Hosted acceptance sequence"); 18-row tool-call log inspected; hosted grocery items cleaned back to Oats/2, Apples/4, Milk/1. |
 | 3 — Web OAuth onboarding + consent (`ai/thoughts/tickets/2026-10-27-03-*.md`) | Complete. All acceptance criteria checked in the ticket. | Pages and consent logic under `poc/web/`; 30/30 safe Node tests pass (2026-10-27, after the `supabase-js` pin fix); local `/poc/` smoke (L1) 200/200/200; live gates L2, L3 (approval), and L4 (denial) PASSED on 2026-10-27 (see "Web OAuth onboarding and consent (Ticket 3)" below). |
 | 4 — Gate 1 run + evidence (`ai/thoughts/tickets/2026-10-27-04-*.md`) | Run materials prepared 2026-10-28; both surfaces **not-run**, Gate 1 decision **pending / not-run**. No Gate 1 verdict exists yet. | Version-2 artifact in `poc/fixtures/grocery-list-v2-update.sql`; runbook below ("Gate 1 runbook (Ticket 4)"); blank worksheets in `poc/fixtures/gate1-worksheet-muse.md` and `poc/fixtures/gate1-worksheet-chatgpt-web.md`. Human runs of G1.1–G1.7 on Muse and ChatGPT web are still required. |
+| 5 — Magic login + Cloud internal accounts (`ai/thoughts/tickets/2026-10-30-poc-magic-login-cloud-accounts.md`) | Local implementation complete 2026-10-30; live deployment and live flows **NOT RUN** (no designated mailbox or dashboard access in the execution environment). | Email-code consent sign-in, `poc_accounts` migration, account-ID authorization; local Node/Deno/SQL/race evidence below ("Magic login and Cloud accounts (this ticket)"). Hosted steps remain developer-performed. |
 
 Carried into ticket 4 (deliberately not claimed here): (a) the hosted DB-only definition update adding `remove_item`, proven locally by the Deno core test with a fake repository but not yet against hosted Postgres (ticket 4, G1.6); (b) the formal previous-`app_version`-after-a-real-version-bump probe, covered locally and by a hosted wrong-version probe but not by an actual hosted bump (ticket 4, G1.7). These two criteria stay unchecked in ticket 2 until then.
 
-Environment state for resuming: the developer is logged in to the Supabase CLI (`npx supabase`, v2.122.0) and the project is linked from `poc/mcp-server` (CLI state under `supabase/.temp/`, git-ignored — re-run `npx supabase link --project-ref yjrwyfkybszlpufsflan` if missing). Docker Desktop's service was started for the local Postgres proof and left running; the throwaway `loomspan-poc-pg` container was removed. Never run `supabase config push` (see "Hosted deploy"). No credential, token, password, or key value is recorded anywhere in this repository; test-user passwords exist only in the developer's records, and hosted re-verification takes them via `Read-Host` environment variables (see "Direct-token acquisition").
+Environment state for resuming: the developer is logged in to the Supabase CLI (`npx supabase`, v2.122.0) and the project is linked from `poc/mcp-server` (CLI state under `supabase/.temp/`, git-ignored — re-run `npx supabase link --project-ref yjrwyfkybszlpufsflan` if missing). Docker Desktop's service was started for the local Postgres proof and left running; the throwaway `loomspan-poc-pg` container was removed. Never run `supabase config push` (see "Hosted deploy"). No credential, token, password, or key value is recorded anywhere in this repository; hosted re-verification uses the email-code consent flow (see "Test owner setup"); the designated owner mailbox is supplied only through the execution environment and never recorded here.
 
 ## Supabase preflight evidence
 
@@ -33,7 +34,7 @@ Redaction rule: record toggle state, Authorization Path, Site URL, signing algor
 
 ## Repository layout
 
-- `poc/mcp-server/` — Supabase config, migrations, seed, tests, and the ticket-2 MCP Edge Function in `supabase/functions/mcp/` (`index.ts`, `core.ts`, `data.ts`, `core.test.ts`), plus `tests/hosted-acceptance.mjs` for hosted re-verification.
+- `poc/mcp-server/` — Supabase config, migrations, seed, tests, and the ticket-2 MCP Edge Function in `supabase/functions/mcp/` (`index.ts`, `core.ts`, `data.ts`, `core.test.ts`), plus `tests/account-race.mjs` for the local concurrency race check. The former password-grant hosted script was removed in this ticket; hosted re-verification uses `poc/web/tests/oauth-reference-flow.mjs`.
 - `poc/web/` — ticket-3 static pages: `index.html` (onboarding), `oauth/consent.html` (consent), `assets/` (`poc.css`, `config.js` placeholder-only, `consent-core.mjs`, `consent.js`, `onboarding.js`), and dev-only `tests/` (not deployed). No build step.
 - `poc/fixtures/expected-fixture.json` — machine-readable expectations used by the automated tests.
 - `poc/README.md` — this file.
@@ -49,11 +50,14 @@ docker run --name loomspan-poc-pg -e POSTGRES_PASSWORD=poc-local-only -p 54329:5
 # Wait until Postgres accepts connections; the first psql below fails if run before the server is ready (notably when the image is already cached).
 do { docker exec loomspan-poc-pg pg_isready -U postgres; $ready = ($LASTEXITCODE -eq 0); if (-not $ready) { Start-Sleep -Seconds 1 } } while (-not $ready)
 Get-Content poc/mcp-server/supabase/migrations/20261027000001_poc_fixture_schema.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
+Get-Content poc/mcp-server/supabase/migrations/20261030000001_poc_accounts.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
 Get-Content poc/mcp-server/supabase/seed.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
 Get-Content poc/mcp-server/tests/fixture.assertions.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
 # Re-run the seed once to prove idempotency, then re-run the assertions.
 Get-Content poc/mcp-server/supabase/seed.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
 Get-Content poc/mcp-server/tests/fixture.assertions.sql | docker exec -i loomspan-poc-pg psql -U postgres -v ON_ERROR_STOP=1
+# Concurrency race: 16 parallel duplicate first resolutions, one account.
+node poc/mcp-server/tests/account-race.mjs
 docker rm -f loomspan-poc-pg
 node --test poc/mcp-server/tests/structure.test.mjs poc/mcp-server/tests/secret-scan.test.mjs
 ```
@@ -62,17 +66,30 @@ node --test poc/mcp-server/tests/structure.test.mjs poc/mcp-server/tests/secret-
 
 ## Test owner setup (dashboard)
 
-Completed on the hosted project on 2026-10-27: the migration, seed, and fixture assertions were applied via the dashboard SQL editor with no errors, the synthetic test owner (`poc-owner@example.invalid`) and a non-member user (`poc-nonmember@example.invalid`) were created, and the placeholder membership UUID `00000000-0000-4000-8000-000000000001` was replaced with the real owner UUID (one membership row confirmed; 3 seeded grocery items). Credentials were set in the dashboard only and are recorded nowhere here. The procedure below is retained for recreation.
+Superseded for sign-in by this ticket (2026-10-30): the owner is no longer a synthetic user created in the dashboard. The developer designates one real, code-receiving mailbox as the POC owner; its address is supplied only through the execution environment and is never written into this repository, its evidence, or any transcript stored here. The placeholder membership UUID `00000000-0000-4000-8000-000000000001` in `seed.sql` is a placeholder account ID, not an identity.
 
-1. In the Loomspan Testing dashboard, create the synthetic test owner under Authentication > Users (for example `poc-owner@example.invalid`). Set the password in the dashboard only; never record it here or anywhere in the repository.
-2. Copy the new user UUID from Authentication > Users.
-3. Apply the migration and seed to the hosted project, then run this replacement statement with the real UUID substituted:
+Procedure (developer-performed, live steps NOT RUN on 2026-10-30 — no designated mailbox or dashboard access was present in the execution environment):
+
+1. Dashboard only (never `supabase config push`): confirm the email provider is enabled, new-user sign-up is allowed, the Magic Link template delivers the 6-digit code (it contains the token placeholder), OTP length is 6, and expiry/rate limits stay at Supabase defaults. Record before/after setting names and states only.
+2. Apply the migrations to the hosted project from `poc/mcp-server` with `npx supabase db push`, deploy the function with `npx supabase functions deploy mcp`, and deploy the consent page through the separate site repository (see the Ticket 3 deployment runbook).
+3. The designated owner signs in through the live reference flow (`node poc/web/tests/oauth-reference-flow.mjs`) and completes an authenticated `list_apps`. This creates the owner account; an empty result at this point is expected.
+4. In the dashboard SQL editor only, type the designated mailbox (trimmed and lowercased) into this carry-over statement — never into this repository:
 
 ```sql
-UPDATE poc_app_memberships SET user_id = '<paste-real-uuid>' WHERE app_id = 'grocery-list' AND user_id = '00000000-0000-4000-8000-000000000001';
+BEGIN;
+INSERT INTO poc_app_memberships (app_id, account_id, role)
+SELECT 'grocery-list', id, 'owner' FROM poc_accounts
+WHERE normalized_email = '<designated-owner-email>'
+ON CONFLICT (app_id, account_id) DO NOTHING;
+-- Verify exactly one grocery-list membership row exists and its
+-- account_id is present in poc_accounts before the delete below.
+DELETE FROM poc_app_memberships
+WHERE app_id = 'grocery-list'
+  AND account_id NOT IN (SELECT id FROM poc_accounts);
+COMMIT;
 ```
 
-4. Confirm one membership row exists for the real UUID and record the date here (no credentials).
+5. Verify counts only: exactly 1 `grocery-list` membership row, its `account_id` present in `poc_accounts`, grocery items still Oats/2, Apples/4, Milk/1. Re-run the owner reference flow; `list_apps` must now return `grocery-list`. A second controlled mailbox is exercised with `node poc/web/tests/oauth-reference-flow.mjs --expect-nonmember`.
 
 ## Definition effect update for an already-seeded hosted database
 
@@ -106,7 +123,7 @@ curl.exe -i -X POST 'http://127.0.0.1:54321/functions/v1/mcp' -H 'Content-Type: 
 
 ### Hosted deploy (developer-performed)
 
-First complete the preflight table above (or record the blocker and stop), apply the migration and seed to the hosted project, run the definition effect update above if the hosted database was already seeded, create the test owner and replace the placeholder membership UUID (see "Test owner setup"), and create a second signed-in user with no membership row for the non-member checks.
+First complete the preflight table above (or record the blocker and stop), apply the migration and seed to the hosted project, run the definition effect update above if the hosted database was already seeded, and follow "Test owner setup" for the designated-owner carry-over and the second-mailbox non-member checks. (Superseded note: the earlier synthetic-user creation procedure no longer applies.)
 
 ```powershell
 cd poc/mcp-server
@@ -116,9 +133,9 @@ supabase functions deploy mcp
 
 Do not run `supabase config push` for this POC: the local `config.toml` is intentionally minimal (project id and the `mcp` function's `verify_jwt = false`, which the deploy applies), and pushing it would overwrite the dashboard-managed Auth settings (OAuth server, Site URL) verified in the preflight. Deployment on 2026-10-27 used this sequence: `mcp` function ACTIVE, version 1, and an unauthenticated probe returned HTTP 401 with a `WWW-Authenticate` protected-resource header.
 
-### Direct-token acquisition (developer-performed)
+### Direct-token acquisition (developer-performed) — superseded
 
-Ticket 2 may be verified with tokens obtained through Supabase Auth directly; the companion OAuth/consent proof is ticket 3. The scripted form is `node poc/mcp-server/tests/hosted-acceptance.mjs`, which performs the password-grant token acquisition itself (Auth token endpoint with the public anon/publishable key in the `apikey` header) and reads all credentials only from environment variables (`POC_ANON_KEY`, `POC_OWNER_EMAIL`/`POC_OWNER_PASSWORD`, `POC_NONMEMBER_EMAIL`/`POC_NONMEMBER_PASSWORD`, set via `Read-Host -AsSecureString`). It prints only tool names, `ok`/`error_code` results, and HTTP status codes. Never paste a token or password value into this repository, a log, or a chat transcript.
+Superseded by this ticket (2026-10-30): the password-grant hosted script has been removed and tokens are obtained only through the real consent path. Use `node poc/web/tests/oauth-reference-flow.mjs` (owner approval plus grocery exercise), `node poc/web/tests/oauth-reference-flow.mjs --deny` (denial), and `node poc/web/tests/oauth-reference-flow.mjs --expect-nonmember` (second mailbox). Never paste a token or code value into this repository, a log, or a chat transcript. The dated Ticket 2 hosted results below are historical evidence from the earlier flow and are not re-scored.
 
 ### Hosted acceptance sequence (developer-performed, record redacted results)
 
@@ -157,7 +174,7 @@ Status on 2026-10-27: complete. Local implementation, L2 live-route proof, L3 li
 2. Confirm the `loomspan.ai` site repository (candidate above). Copy only `poc/web/index.html`, `poc/web/oauth/`, and `poc/web/assets/` (never `poc/web/tests/`) into its `/poc/` location (`public/poc/` in the candidate repo). In the **copied** `assets/config.js` only, replace `__LOOMSPAN_ANON_KEY__` with the public anon/publishable key from the dashboard (Authentication > API Keys); never commit that value in this repository, and never copy any service-role material.
 3. Deployed-output scan (plan D6) before pushing: scan the copied tree for JWT-shaped strings other than the intended public key in `config.js`, `service_role`, private-key headers, and `SUPABASE_SERVICE_ROLE_KEY`; assert the placeholder is absent. Record pass/fail and file names only, never key material. Commit and push in the site repository and wait for its deploy to succeed.
 4. L2 live route proof: `curl.exe -s -i https://loomspan.ai/poc/` (expect 200, title "Connect Loomspan (POC)", MCP server URL), `curl.exe -s -i https://loomspan.ai/poc/oauth/consent` (expect 200, no `Location` redirect, `id="consent-details"`), `curl.exe -s https://loomspan.ai/` (main-site comparison — POC bodies must differ), and `curl.exe -s https://loomspan.ai/poc/assets/config.js` (placeholder absent, no service-role pattern).
-5. L3 approval: `node poc/web/tests/oauth-reference-flow.mjs` — open the printed authorize URL, sign in on the deployed consent page as the test owner if prompted, confirm the page shows client `loomspan-poc-reference` and scopes `openid email profile` **before** approving, then Approve. Success is script exit 0 (`list_apps` ok with only `grocery-list`). A second run that shows no decision is recorded as "previously consented — auto-approved", not as a second decision pass.
+5. L3 approval: `node poc/web/tests/oauth-reference-flow.mjs` — open the printed authorize URL, sign in on the deployed consent page with the email code sent to your mailbox if prompted, confirm the page shows client `loomspan-poc-reference` and scopes `openid email profile` **before** approving, then Approve. Success is script exit 0 (`list_apps` ok with only `grocery-list`). A second run that shows no decision is recorded as "previously consented — auto-approved", not as a second decision pass.
 6. L4 denial: `node poc/web/tests/oauth-reference-flow.mjs --deny` — click Deny. Success is script exit 0: `error=access_denied`, no code, no token exchange, unauthenticated `list_apps` HTTP 401.
 7. On any failure at discovery, registration, sign-in, consent, or token exchange: record the step, HTTP status and `error`/`error_code` values only, and the classification "authentication/integration failure — cause unconfirmed", plus any workaround and its added user burden (with the matching onboarding step updated in the same change).
 
@@ -169,6 +186,16 @@ Status on 2026-10-27: complete. Local implementation, L2 live-route proof, L3 li
 - Fix: `poc/web/assets/consent.js` now pins `supabase-js@2.78.0`, and `poc/web/assets/consent-core.mjs` guards a missing `auth.oauth` namespace. Orchestrator copied both fixed files to `C:\opendev\code\loomspan-website\public\poc\assets\` on 2026-10-27 (SHA-256 byte-identical to source; the deployed copy of `assets/config.js` with the injected public key was not touched).
 - Workaround / user burden: there is no user workaround. The developer redeployed the site with the fixed `consent.js`/`consent-core.mjs`, then reran L3 (approval) and L4 (denial); both PASSED (see Resolution evidence below).
 - Resolution evidence (2026-10-27): after redeploy, L3 approval PASSED — `node poc/web/tests/oauth-reference-flow.mjs` printed PASS for discovery (authorization/token/registration endpoints present), dynamic client registration (HTTP 201), callback (code received, state matched), token exchange (bearer token received, `expires_in=3600`), and authenticated `list_apps` (`ok=true`, `app_ids=[grocery-list]`, summary only), ending `DONE: approval reference flow passed.` The transcript the developer supplied also contained the authorize URL; its client identifier and state values are not recorded here (state was consumed by the completed run). L4 denial PASSED on 2026-10-27 as well — `node poc/web/tests/oauth-reference-flow.mjs --deny` printed PASS for discovery, dynamic client registration (HTTP 201), denial (`error=access_denied`, no code, no token exchange attempted), and unauthenticated `list_apps` returning HTTP 401, ending `DONE: denial reference flow passed.` As with L3, the supplied transcript's authorize URL values are not recorded here.
+
+## Magic login and Cloud accounts (this ticket, 2026-10-30)
+
+Local implementation is complete; every live step is **NOT RUN** because no developer-designated mailbox, dashboard session, or hosted credential was present in the execution environment. No mailbox address, code, token, or key value is recorded here.
+
+- Sign-in: the consent page offers only the email-code flow (enter email, receive a 6-digit code, enter it on the same page in the same tab). There is no password sign-in, no provider button, and no clickable-link-only flow. A wrong or expired code signs nobody in and neither approves nor denies the pending request; retry and resend stay available.
+- Accounts: the MCP function reads only the verified token email, normalizes it by trimming surrounding whitespace and lowercasing (plus-tags and dots stay significant), and resolves it to a permanent internal account ID in `poc_accounts`, creating the account atomically on first resolution. All three tools authorize by that account ID. No tool accepts an email parameter, and an email inside tool arguments is never identity evidence. Unconfirmed or missing email fails closed as unauthenticated; an account-resolution failure returns `internal_error`.
+- Phase 0 bundle check (2026-10-30): the pinned `supabase-js@2.78.0` bundle's auth module contains both the code-request and code-verify methods (boolean result only; bundle content not recorded). Hosted Auth settings were NOT read or changed (dashboard only).
+- Local verification (2026-10-30): full Node suite and Deno suite pass (counts in the Step Report for this ticket); the local Docker Postgres proof (both migrations, seed, assertions, re-seed, assertions) passes with the grocery fixture unchanged (Oats/2, Apples/4, Milk/1); the 16-way concurrent first-resolution race returns one account ID and leaves one row. The separate site repository layout was inspected read-only (7 deployed files); no site deployment was performed.
+- Live steps NOT RUN, with reason: dashboard OTP end-state read/set, hosted pre/post counts, `npx supabase db push`, `npx supabase functions deploy mcp`, consent-page deployment through the site repository, owner carry-over, and all live reference/Codex/second-mailbox/wrong-code/expired-code/case-whitespace/plus-tag runs. Each requires dashboard access, the deployed stack, or a developer-designated mailbox that was not available here. They remain developer-performed using "Test owner setup" and the reference-flow modes above, recording dates, outcomes, counts, and error codes only.
 
 ## Scope boundaries (unchanged)
 

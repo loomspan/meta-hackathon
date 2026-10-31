@@ -35,6 +35,56 @@ export function describeAuthorization(details) {
 }
 
 export const MISSING_OAUTH_MESSAGE = 'The sign-in library does not support authorization requests. Reload this page, or restart the connection from your companion app.';
+export const MISSING_OTP_MESSAGE = 'The sign-in library does not support email codes. Reload this page, or restart the connection from your companion app.';
+
+function authMethod(supabase, method) {
+  const auth = supabase?.auth;
+  if (!auth || typeof auth[method] !== 'function') return null;
+  return auth[method].bind(auth);
+}
+
+export async function requestEmailCode(supabase, email) {
+  const signInWithOtp = authMethod(supabase, 'signInWithOtp');
+  if (!signInWithOtp) return { kind: 'error', message: MISSING_OTP_MESSAGE };
+  const trimmed = typeof email === 'string' ? email.trim() : '';
+  let result;
+  try {
+    result = await signInWithOtp({ email: trimmed, options: { shouldCreateUser: true } });
+  } catch (err) {
+    return { kind: 'error', message: errorMessage(err) };
+  }
+  if (result?.error) return { kind: 'error', message: errorMessage(result.error) };
+  return { kind: 'ok' };
+}
+
+export async function verifyEmailCode(supabase, email, code) {
+  const verifyOtp = authMethod(supabase, 'verifyOtp');
+  if (!verifyOtp) return { kind: 'error', message: MISSING_OTP_MESSAGE };
+  const trimmed = typeof email === 'string' ? email.trim() : '';
+  let result;
+  try {
+    result = await verifyOtp({ email: trimmed, token: code, type: 'email' });
+  } catch (err) {
+    return { kind: 'error', message: errorMessage(err) };
+  }
+  if (result?.error || result?.data == null) return { kind: 'error', message: errorMessage(result?.error) };
+  return { kind: 'ok' };
+}
+
+export const MISSING_SIGNOUT_MESSAGE = 'Sign-out is not available. Reload this page, or restart the connection from your companion app.';
+
+export async function signOut(supabase) {
+  const doSignOut = authMethod(supabase, 'signOut');
+  if (!doSignOut) return { kind: 'error', message: MISSING_SIGNOUT_MESSAGE };
+  let result;
+  try {
+    result = await doSignOut();
+  } catch (err) {
+    return { kind: 'error', message: errorMessage(err) };
+  }
+  if (result?.error) return { kind: 'error', message: errorMessage(result.error) };
+  return { kind: 'ok' };
+}
 
 function oauthMethod(supabase, method) {
   const oauth = supabase?.auth?.oauth;

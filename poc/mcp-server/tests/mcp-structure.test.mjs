@@ -34,6 +34,17 @@ test('no function source logs credentials or contains a service-role key value',
   }
 });
 
+test('account resolution: no user_id membership query remains, verified-email helpers used', () => {
+  const data = read('data.ts');
+  assert.ok(!data.includes('user_id'), 'data.ts must not query user_id');
+  assert.ok(data.includes('poc_accounts') && data.includes('upsert'), 'data.ts must upsert poc_accounts');
+  assert.ok(data.includes('account_id'), 'data.ts must use account_id');
+  const index = read('index.ts');
+  assert.ok(index.includes('verifiedAccountEmail') && index.includes('resolveOrCreateAccount'));
+  const core = read('core.ts');
+  assert.ok(!core.includes('user_id'), 'core.ts must not use user_id');
+});
+
 test('.gitkeep is absent once index.ts exists', () => {
   assert.ok(existsSync(join(fnDir, 'index.ts')));
   assert.ok(!existsSync(join(fnDir, '.gitkeep')), '.gitkeep must be removed once real files exist');

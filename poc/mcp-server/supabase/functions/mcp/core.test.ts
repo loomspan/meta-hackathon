@@ -3,6 +3,8 @@ import {
   handleCallOperation,
   handleGetPack,
   handleListApps,
+  normalizeAccountEmail,
+  verifiedAccountEmail,
   shapeLogRow,
   unauthenticatedLogRow,
   extractLogFieldsFromToolCall,
@@ -57,12 +59,26 @@ class FakeRepo implements FixtureRepo {
   itemQueries = 0;
   logs: LogRow[] = [];
   failLog = false;
+  accounts = new Map<string, string>([["owner@example.invalid", OWNER]]);
+  accountCreations = 0;
+  accountSeq = 0;
 
+  async resolveOrCreateAccount(normalizedEmail: string): Promise<string> {
+    const existing = this.accounts.get(normalizedEmail);
+    if (existing) return existing;
+    await new Promise((r) => setTimeout(r, 1));
+    const afterDelay = this.accounts.get(normalizedEmail);
+    if (afterDelay) return afterDelay;
+    this.accountCreations++;
+    const id = `account-${++this.accountSeq}`;
+    this.accounts.set(normalizedEmail, id);
+    return id;
+  }
   async loadApp(appId: string): Promise<AppRow | null> { return appId === this.app.id ? this.app : null; }
-  async listMemberApps(userId: string): Promise<AppRow[]> { return this.members.has(`grocery-list:${userId}`) ? [this.app] : []; }
+  async listMemberApps(accountId: string): Promise<AppRow[]> { return this.members.has(`grocery-list:${accountId}`) ? [this.app] : []; }
   async loadDefinition(appId: string, version: number): Promise<DefinitionDoc | null> { return this.definitions.get(`${appId}:${version}`) ?? null; }
   async loadPack(packId: string): Promise<PackRow | null> { return this.packs.find((x) => x.id === packId) ?? null; }
-  async isMember(appId: string, userId: string): Promise<boolean> { return this.members.has(`${appId}:${userId}`); }
+  async isMember(appId: string, accountId: string): Promise<boolean> { return this.members.has(`${appId}:${accountId}`); }
   async listItems(_appId: string): Promise<ItemRow[]> { this.itemQueries++; return [...this.items].sort((a, b) => a.id - b.id); }
   async insertItem(_appId: string, fields: Record<string, unknown>): Promise<ItemRow> {
     const name = fields.name;
@@ -91,6 +107,60 @@ class FakeRepo implements FixtureRepo {
 
 const call = (repo: FakeRepo, user = OWNER, over: any = {}) =>
   handleCallOperation(repo, user, { app_id: "grocery-list", app_version: 1, operation: "list_items", arguments: {}, ...over });
+
+Deno.test("normalizeAccountEmail trims and lowercases only", () => {
+  eq(normalizeAccountEmail("  Owner@Example.COM "), "owner@example.com");
+  eq(normalizeAccountEmail("owner@example.com"), "owner@example.com");
+  assert(normalizeAccountEmail("a+b@example.com") !== normalizeAccountEmail("a@example.com"));
+  assert(normalizeAccountEmail("a.b@example.com") !== normalizeAccountEmail("ab@example.com"));
+  eq(normalizeAccountEmail("a b@example.com"), "a b@example.com");
+  for (const v of ["", "   ", null, undefined, 42]) eq(normalizeAccountEmail(v), null);
+});
+
+Deno.test("verifiedAccountEmail requires a confirmed email", () => {
+  eq(verifiedAccountEmail({ email: " Owner@Example.com ", email_confirmed_at: "2026-10-30T00:00:00Z" }), "owner@example.com");
+  eq(verifiedAccountEmail({ email_confirmed_at: "2026-10-30T00:00:00Z" }), null);
+  eq(verifiedAccountEmail({ email: "  ", email_confirmed_at: "2026-10-30T00:00:00Z" }), null);
+  eq(verifiedAccountEmail({ email: "a@example.com" }), null);
+  eq(verifiedAccountEmail({ email: "a@example.com", email_confirmed_at: null }), null);
+  eq(verifiedAccountEmail({ email: 42, email_confirmed_at: "2026-10-30T00:00:00Z" }), null);
+  eq(verifiedAccountEmail(null), null);
+});
+
+Deno.test("first resolution creates one account and reuses it for the same normalized email", async () => {
+  const repo = new FakeRepo();
+  const e1 = verifiedAccountEmail({ email: " New@Example.com ", email_confirmed_at: "2026-10-30T00:00:00Z" });
+  assert(e1);
+  const id1 = await repo.resolveOrCreateAccount(e1);
+  const id2 = await repo.resolveOrCreateAccount("new@example.com");
+  eq(id2, id1); eq(repo.accountCreations, 1);
+  eq((await handleListApps(repo, id1) as any).apps, []);
+  repo.members.add(`grocery-list:${id1}`);
+  eq((await handleListApps(repo, id1) as any).apps.length, 1);
+  const other = await repo.resolveOrCreateAccount("other@example.com");
+  assert(other !== id1); eq(repo.accountCreations, 2);
+  eq((await handleListApps(repo, other) as any).apps, []);
+  eq((await handleGetPack(repo, other, "grocery-list") as any).error_code, "not_member");
+  // Old Supabase-style ID with no membership authorizes as non-member.
+  eq((await handleListApps(repo, NONMEMBER) as any).apps, []);
+  // Concurrent first resolutions return one ID with one creation.
+  const ids = await Promise.all(Array.from({ length: 8 }, () => repo.resolveOrCreateAccount("race@example.invalid")));
+  assert(ids.every((x) => x === ids[0])); eq(repo.accountCreations, 3);
+});
+
+Deno.test("an email supplied as a tool argument is never identity evidence", async () => {
+  const repo = new FakeRepo();
+  // Membership precedes argument validation (preserved ordering): the
+  // non-member stays a non-member and is never upgraded by the email value.
+  const res: any = await call(repo, NONMEMBER, { operation: "list_items", arguments: { email: "owner@example.invalid" } });
+  eq(res.error_code, "not_member"); eq(repo.itemQueries, 0); eq(repo.mutations, 0);
+  // For a member, the undeclared email key is rejected before any query/mutation.
+  const ownerRepo = new FakeRepo();
+  const spoof: any = await call(ownerRepo, OWNER, { operation: "list_items", arguments: { email: "other@example.invalid" } });
+  eq(spoof.error_code, "invalid_arguments"); eq(ownerRepo.itemQueries, 0); eq(ownerRepo.mutations, 0);
+  const ok: any = await call(repo, OWNER, { operation: "list_items", arguments: {} });
+  eq(ok.ok, true);
+});
 
 Deno.test("owner lists in insertion order, adds, persists", async () => {
   const repo = new FakeRepo();
@@ -250,11 +320,11 @@ Deno.test("membership enforcement and log shaping", async () => {
   const res: any = await call(failRepo);
   eq(res.ok, true); eq(res.items.length, 3);
   // shapeLogRow + unauthenticated shaping
-  eq(shapeLogRow({ user_id: null, app_id: null, operation: "list_apps", app_version: null, environment: null, outcome: "ok", error_code: null }).operation, "list_apps");
+  eq(shapeLogRow({ account_id: null, app_id: null, operation: "list_apps", app_version: null, environment: null, outcome: "ok", error_code: null }).operation, "list_apps");
   const extracted = extractLogFieldsFromToolCall(JSON.stringify({ jsonrpc: "2.0", method: "tools/call", params: { name: "call_operation", arguments: { app_id: "grocery-list", operation: "add_item", app_version: 1, arguments: { name: "SECRETARG" } } } }));
   assert(extracted); eq(extracted.operation, "add_item");
   assert(!JSON.stringify(extracted).includes("SECRETARG"));
   const unauth = unauthenticatedLogRow(extracted);
-  eq(unauth.user_id, null); eq(unauth.outcome, "rejected"); eq(unauth.error_code, "unauthenticated");
+  eq(unauth.account_id, null); eq(unauth.outcome, "rejected"); eq(unauth.error_code, "unauthenticated");
   eq(extractLogFieldsFromToolCall(JSON.stringify({ method: "initialize", params: {} })), null);
 });

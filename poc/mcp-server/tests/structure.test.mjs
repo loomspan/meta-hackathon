@@ -12,6 +12,7 @@ test('poc scaffold exists with required structure', () => {
     'poc/README.md',
     'poc/mcp-server/supabase/config.toml',
     'poc/mcp-server/supabase/migrations/20261027000001_poc_fixture_schema.sql',
+    'poc/mcp-server/supabase/migrations/20261030000001_poc_accounts.sql',
     'poc/mcp-server/supabase/seed.sql',
     'poc/mcp-server/supabase/functions/mcp/index.ts',
     'poc/mcp-server/supabase/functions/mcp/core.ts',

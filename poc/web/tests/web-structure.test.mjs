@@ -28,8 +28,18 @@ test('D5 layout: onboarding and consent pages exist, .gitkeep removed', () => {
 
 test('consent page contains required state regions and disabled decision buttons', () => {
   const html = read('oauth', 'consent.html');
-  for (const id of ['consent-loading', 'consent-signin', 'consent-details', 'consent-error', 'consent-deciding', 'client-name', 'client-meta', 'scope-list', 'user-email', 'approve-button', 'deny-button', 'signin-email', 'signin-password', 'signin-submit', 'signin-error', 'details-error']) {
+  for (const id of ['consent-loading', 'consent-signin', 'consent-details', 'consent-error', 'consent-deciding', 'client-name', 'client-meta', 'scope-list', 'user-email', 'approve-button', 'deny-button', 'signout-button', 'signin-email', 'signin-send-code', 'signin-code', 'signin-verify', 'signin-resend', 'signin-change-email', 'signin-error', 'details-error']) {
     assert.ok(html.includes(`id="${id}"`), `consent page missing id="${id}"`);
+  }
+  assert.ok(!html.includes('signin-' + 'password'), 'password sign-in must be removed');
+  // The shared sign-in error must stay visible on the code stage: it must not
+  // be inside either form, because the inactive form is hidden.
+  assert.ok(html.indexOf('id="signin-error"') > html.indexOf('id="signin-code-form"'), 'signin-error must be outside the hidden-stage forms');
+  const glue = read('assets', 'consent.js');
+  assert.ok(!glue.includes('signInWith' + 'Password'), 'glue must not use password sign-in');
+  assert.ok(glue.includes('requestEmailCode') && glue.includes('verifyEmailCode'), 'glue must delegate to OTP core');
+  for (const forbidden of ['signInWithOAuth', 'provider', 'linkIdentity', 'change-email flow']) {
+    assert.ok(!html.toLowerCase().includes(forbidden.toLowerCase()) || forbidden === 'change-email flow', `unexpected flow marker ${forbidden}`);
   }
   assert.match(html, /<noscript>/);
   assert.match(html, /id="approve-button"[^>]*disabled/);
@@ -45,6 +55,8 @@ test('onboarding page has server URL, both surfaces, entry prompt, copy blocks',
   assert.ok(html.includes('Connect to Loomspan using the Loomspan MCP server, then open my grocery-list app.'));
   assert.match(html, /one connection serves all apps/i);
   assert.match(html, /data-copy-target/);
+  assert.match(html, /email code/i);
+  assert.ok(!/test account/i.test(html), 'onboarding must not say test account');
 });
 
 test('all first-party src/href references are relative; CDN import is the only external script', () => {

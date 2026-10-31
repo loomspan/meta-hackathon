@@ -15,15 +15,22 @@
 
   <section id="consent-signin" hidden>
     <h2>Sign in</h2>
-    <p>Sign in with your Loomspan test account to review this authorization request.</p>
+    <p>Enter your email address and we will email you a 6-digit sign-in code. Enter the code on this page to review this authorization request.</p>
     <form id="signin-form">
       <label for="signin-email">Email</label>
       <input id="signin-email" name="email" type="email" autocomplete="username" required>
-      <label for="signin-password">Password</label>
-      <input id="signin-password" name="password" type="password" autocomplete="current-password" required>
-      <p id="signin-error" class="alert" hidden></p>
-      <div class="actions"><button id="signin-submit" type="submit" class="primary">Sign in</button></div>
+      <div class="actions"><button id="signin-send-code" type="submit" class="primary">Email me a sign-in code</button></div>
     </form>
+    <form id="signin-code-form" hidden>
+      <label for="signin-code">Sign-in code</label>
+      <input id="signin-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" required>
+      <div class="actions">
+        <button id="signin-verify" type="submit" class="primary">Verify code</button>
+        <button id="signin-resend" type="button">Resend code</button>
+        <button id="signin-change-email" type="button">Change email</button>
+      </div>
+    </form>
+    <p id="signin-error" class="alert" hidden></p>
   </section>
 
   <section id="consent-details" hidden>
@@ -37,7 +44,9 @@
     <div class="actions">
       <button id="approve-button" type="button" class="primary" disabled>Approve</button>
       <button id="deny-button" type="button" class="danger" disabled>Deny</button>
+      <button id="signout-button" type="button" disabled>Sign out</button>
     </div>
+    <p>Not the right account? Sign out, then sign in with a different email. Signing out does not approve or deny this request.</p>
   </section>
 
   <p id="consent-deciding" hidden>Completing your decision…</p>

@@ -35,17 +35,31 @@ export interface PackRow {
 }
 export interface ItemRow { id: number; name: string; quantity: number; }
 export interface LogRow {
-  user_id: string | null; app_id: string | null; operation: string | null;
+  account_id: string | null; app_id: string | null; operation: string | null;
   app_version: number | null; environment: string | null;
   outcome: string; error_code: string | null;
 }
 
+export function normalizeAccountEmail(email: unknown): string | null {
+  if (typeof email !== "string") return null;
+  const normalized = email.trim().toLowerCase();
+  return normalized ? normalized : null;
+}
+
+export function verifiedAccountEmail(user: unknown): string | null {
+  if (!user || typeof user !== "object") return null;
+  const record = user as Record<string, unknown>;
+  if (typeof record.email_confirmed_at !== "string" || !record.email_confirmed_at) return null;
+  return normalizeAccountEmail(record.email);
+}
+
 export interface FixtureRepo {
+  resolveOrCreateAccount(normalizedEmail: string): Promise<string>;
   loadApp(appId: string): Promise<AppRow | null>;
-  listMemberApps(userId: string): Promise<AppRow[]>;
+  listMemberApps(accountId: string): Promise<AppRow[]>;
   loadDefinition(appId: string, version: number): Promise<DefinitionDoc | null>;
   loadPack(packId: string): Promise<PackRow | null>;
-  isMember(appId: string, userId: string): Promise<boolean>;
+  isMember(appId: string, accountId: string): Promise<boolean>;
   listItems(appId: string): Promise<ItemRow[]>;
   insertItem(appId: string, fields: Record<string, unknown>): Promise<ItemRow>;
   deleteItems(appId: string, criteria: Record<string, unknown>): Promise<ItemRow[]>;
@@ -66,7 +80,7 @@ function invalidDefinition(detail: string): Payload {
 
 export function shapeLogRow(row: LogRow): LogRow {
   return {
-    user_id: row.user_id ?? null,
+    account_id: row.account_id ?? null,
     app_id: row.app_id ?? null,
     operation: row.operation ?? null,
     app_version: typeof row.app_version === "number" && Number.isInteger(row.app_version) ? row.app_version : null,
@@ -224,10 +238,10 @@ export async function executeOperation(
 
 // --- Tool handlers ---------------------------------------------------------
 
-export async function handleListApps(repo: FixtureRepo, userId: string): Promise<Payload> {
-  const base = { user_id: userId, app_id: null, operation: "list_apps", app_version: null, environment: null };
+export async function handleListApps(repo: FixtureRepo, accountId: string): Promise<Payload> {
+  const base = { account_id: accountId, app_id: null, operation: "list_apps", app_version: null, environment: null };
   try {
-    const apps = await repo.listMemberApps(userId);
+    const apps = await repo.listMemberApps(accountId);
     return await finish(repo, base, {
       ok: true,
       apps: apps.map((a) => ({ app_id: a.id, name: a.name, version: a.current_version, summary: a.summary, environments: a.environments })),
@@ -237,8 +251,8 @@ export async function handleListApps(repo: FixtureRepo, userId: string): Promise
   }
 }
 
-export async function handleGetPack(repo: FixtureRepo, userId: string, packId: unknown): Promise<Payload> {
-  const base = { user_id: userId, app_id: null as string | null, operation: "get_pack", app_version: null as number | null, environment: null };
+export async function handleGetPack(repo: FixtureRepo, accountId: string, packId: unknown): Promise<Payload> {
+  const base = { account_id: accountId, app_id: null as string | null, operation: "get_pack", app_version: null as number | null, environment: null };
   try {
     if (typeof packId !== "string" || packId.length === 0) {
       return await finish(repo, base, err("unknown_pack", "No pack was identified. Use a pack ID returned for this user, then retry."));
@@ -255,7 +269,7 @@ export async function handleGetPack(repo: FixtureRepo, userId: string, packId: u
     }
     const appId = pack.app_id ?? pack.id;
     base.app_id = appId;
-    if (!(await repo.isMember(appId, userId))) {
+    if (!(await repo.isMember(appId, accountId))) {
       return await finish(repo, base, err("not_member", "The signed-in user is not a member of this app. Ask the app owner for access; no app data was returned."));
     }
     const app = await repo.loadApp(appId);
@@ -286,12 +300,12 @@ export interface CallOperationInput {
   arguments?: unknown;
 }
 
-export async function handleCallOperation(repo: FixtureRepo, userId: string, input: CallOperationInput): Promise<Payload> {
+export async function handleCallOperation(repo: FixtureRepo, accountId: string, input: CallOperationInput): Promise<Payload> {
   const requestedApp = typeof input?.app_id === "string" ? input.app_id : null;
   const requestedOp = typeof input?.operation === "string" ? input.operation : null;
   const logVersion = typeof input?.app_version === "number" && Number.isInteger(input.app_version) ? input.app_version : null;
   const logEnv = input?.environment === undefined ? "production" : (typeof input.environment === "string" ? input.environment : null);
-  const base = { user_id: userId, app_id: requestedApp, operation: requestedOp, app_version: logVersion, environment: logEnv };
+  const base = { account_id: accountId, app_id: requestedApp, operation: requestedOp, app_version: logVersion, environment: logEnv };
   try {
     if (!requestedApp) {
       return await finish(repo, base, err("unknown_app", "No app was identified. Call list_apps to see the available apps, then retry."));
@@ -300,7 +314,7 @@ export async function handleCallOperation(repo: FixtureRepo, userId: string, inp
     if (!app) {
       return await finish(repo, base, err("unknown_app", `Unknown app '${requestedApp}'. Call list_apps to see the available apps, then retry.`));
     }
-    if (!(await repo.isMember(requestedApp, userId))) {
+    if (!(await repo.isMember(requestedApp, accountId))) {
       return await finish(repo, base, err("not_member", "The signed-in user is not a member of this app. Ask the app owner for access; no operation was run."));
     }
     if (typeof input.app_version !== "number" || !Number.isInteger(input.app_version)) {
@@ -373,7 +387,7 @@ export function extractLogFieldsFromToolCall(bodyText: string): ExtractedCall | 
 export function unauthenticatedLogRow(extracted: ExtractedCall): LogRow {
   const isCall = extracted.tool === "call_operation";
   return shapeLogRow({
-    user_id: null,
+    account_id: null,
     app_id: isCall ? extracted.app_id : null,
     operation: isCall ? extracted.operation : extracted.tool,
     app_version: isCall ? extracted.app_version : null,
